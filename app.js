@@ -7,10 +7,10 @@ const themes = document.getElementById("themes")
 
 window.localStorage.trainingData = window.localStorage.trainingData || JSON.stringify([])
 
-
 // our current voting combination
 const currentColors = {
   back: {},
+  text: {},
   one: {},
   two: {},
   three: {},
@@ -34,6 +34,9 @@ function saveTrainingData(score) {
       Math.round(currentColors.back.r/2.55) / 100, // divide by 255 and round to 2 decimal places
       Math.round(currentColors.back.g/2.55) / 100,
       Math.round(currentColors.back.b/2.55) / 100,
+      Math.round(currentColors.text.r/2.55) / 100,
+      Math.round(currentColors.text.g/2.55) / 100,
+      Math.round(currentColors.text.b/2.55) / 100,
       Math.round(currentColors.one.r/2.55) / 100,
       Math.round(currentColors.one.g/2.55) / 100,
       Math.round(currentColors.one.b/2.55) / 100,
@@ -57,60 +60,56 @@ function saveTrainingData(score) {
 
 // once we have a good set of data, generate some color combinations!
 function predictThemeCombinations() {
-  const data = JSON.parse(window.localStorage.trainingData)
-  if (!data.length) {
-    return;
-  }
+    const data = JSON.parse(window.localStorage.trainingData)
+    if (!data.length) return;
 
-  themes.innerHTML = ""
-  const net = new brain.NeuralNetwork({activation: "leaky-relu"});
-  const results = []
+    themes.innerHTML = ""
+    const net = new brain.NeuralNetwork({activation: "leaky-relu"});
+    const results = []
 
-  net.train(data)
+    net.train(data)
 
-  for (let i = 0; i < 100000; i++) {
-    const back = getRandomBackgroundRgb()
-    const one = getRandomRgb()
-    const two = getRandomRgb()
-    const three = getRandomRgb()
-    const colors = [
-      Math.round(back.r/2.55) / 100, // divide by 255 and round to 2 decimal places
-      Math.round(back.g/2.55) / 100,
-      Math.round(back.b/2.55) / 100,
-      Math.round(one.r/2.55) / 100,
-      Math.round(one.g/2.55) / 100,
-      Math.round(one.b/2.55) / 100,
-      Math.round(two.r/2.55) / 100,
-      Math.round(two.g/2.55) / 100,
-      Math.round(two.b/2.55) / 100,
-      Math.round(three.r/2.55) / 100,
-      Math.round(three.g/2.55) / 100,
-      Math.round(three.b/2.55) / 100,
-    ]
+    for (let i = 0; i < 100000; i++) {
+        const darkOrLight = Math.round(Math.random())
+        const back = getRandomBackgroundRgb(darkOrLight)
+        const text = getRandomTextRgb(darkOrLight)
+        const one = getRandomRgb()
+        const two = getRandomRgb()
+        const three = getRandomRgb()
+        const colors = [
+            Math.round(back.r/2.55) / 100, // divide by 255 and round to 2 decimal places
+            Math.round(back.g/2.55) / 100,
+            Math.round(back.b/2.55) / 100,
+            Math.round(text.r/2.55) / 100,
+            Math.round(text.g/2.55) / 100,
+            Math.round(text.b/2.55) / 100,
+            Math.round(one.r/2.55) / 100,
+            Math.round(one.g/2.55) / 100,
+            Math.round(one.b/2.55) / 100,
+            Math.round(two.r/2.55) / 100,
+            Math.round(two.g/2.55) / 100,
+            Math.round(two.b/2.55) / 100,
+            Math.round(three.r/2.55) / 100,
+            Math.round(three.g/2.55) / 100,
+            Math.round(three.b/2.55) / 100,
+        ]
 
-    const [ score ] = net.run(colors)
-    results.push({ back, one, two, three, score})
-  }
+        const [ score ] = net.run(colors)
+        results.push({ back, text, one, two, three, score})
+    }
 
-  // sort results
-  const sortedResults = results.sort(function(a, b) {
-    var a = a.score
-    var b = b.score
+    const sortedResults = results.sort((a, b) => b.score - a.score)
 
-    return b - a
-  })
-
-  // keep the top 20 results!
-  for (let i = 0; i < 20; i++) {
-    addNewTheme(sortedResults[i])
-  }
+    for (let i = 0; i < 6; i++) {
+        addNewTheme(sortedResults[i])
+    }
 }
 
-function addNewTheme({back, one, two, three, score}) {
+function addNewTheme({back, text, one, two, three, score}) {
   const newTheme = document.createElement("div")
   newTheme.classList.add("predicted-theme")
   newTheme.innerHTML = `
-  <div class="editor-wrapper" style="background:rgb(${back.r}, ${back.g}, ${back.b})">
+  <div class="editor-wrapper" style="background:rgb(${back.r}, ${back.g}, ${back.b}); color: rgb(${text.r}, ${text.g}, ${text.b});">
     <span style="color:rgb(${one.r}, ${one.g}, ${one.b})">import</span> React <span style="color:rgb(${one.r}, ${one.g}, ${one.b})">from</span> <span style="color: rgb(${two.r}, ${two.g}, ${two.b})">"react"</span><br/>
     <span style="color:rgb(${one.r}, ${one.g}, ${one.b})">import</span> ReactDOM <span style="color:rgb(${one.r}, ${one.g}, ${one.b})">from</span> <span style="color: rgb(${two.r}, ${two.g}, ${two.b})">"react-dom"</span><br/>
     <span style="color:rgb(${one.r}, ${one.g}, ${one.b})">import {</span> Provider <span style="color:rgb(${one.r}, ${one.g}, ${one.b})">} from</span> <span style="color: rgb(${two.r}, ${two.g}, ${two.b})">"react-redux"</span><br/>
@@ -126,6 +125,7 @@ function addNewTheme({back, one, two, three, score}) {
   </div>
   <li>Score ${score}</li>
   <li>Background rgb(${back.r}, ${back.g}, ${back.b})</li>
+  <li>Text rgb(${text.r}, ${text.g}, ${text.b})</li>
   <li>Color 1 rgb(${one.r}, ${one.g}, ${one.b})</li>
   <li>Color 2 rgb(${two.r}, ${two.g}, ${two.b})</li>
   <li>Color 3 rgb(${three.r}, ${three.g}, ${three.b})</li>
@@ -134,50 +134,67 @@ function addNewTheme({back, one, two, three, score}) {
 }
 
 function setStars(whichStar) {
-  for (let i = 0; i < stars.length; i++) {
-    stars[i].classList.add("gold")
-    if (i >= whichStar) {
-      break;
+    for (let i = 0; i <= whichStar; i++) {
+        stars[i].classList.add("gold")
     }
-  }
 }
 
 function clearStars() {
-  for (const star of stars) {
-    star.classList.remove("gold")
-  }
+    for (const star of stars) {
+        star.classList.remove("gold")
+    }
 }
-function generateRandomTheme() {
-  currentColors.back = getRandomBackgroundRgb()
-  currentColors.one = getRandomRgb()
-  currentColors.two = getRandomRgb()
-  currentColors.three = getRandomRgb()
 
-  editorWrapper.style.background = `rgb(${currentColors.back.r},${currentColors.back.g},${currentColors.back.b})`
-  for (let color of colorOne) {
-    color.style.color = `rgb(${currentColors.one.r},${currentColors.one.g},${currentColors.one.b})`
-  }
-  for (let color of colorTwo) {
-    color.style.color = `rgb(${currentColors.two.r},${currentColors.two.g},${currentColors.two.b})`
-  }
-  for (let color of colorThree) {
-    color.style.color = `rgb(${currentColors.three.r},${currentColors.three.g},${currentColors.three.b})`
-  }
+function generateRandomTheme() {
+    const darkOrLight = Math.round(Math.random())
+    currentColors.back = getRandomBackgroundRgb(darkOrLight)
+    currentColors.text = getRandomTextRgb(darkOrLight)
+    currentColors.one = getRandomRgb()
+    currentColors.two = getRandomRgb()
+    currentColors.three = getRandomRgb()
+
+    editorWrapper.style.background = `rgb(${currentColors.back.r},${currentColors.back.g},${currentColors.back.b})`
+    editorWrapper.style.color = `rgb(${currentColors.text.r},${currentColors.text.g},${currentColors.text.b})`
+    for (let color of colorOne) {
+        color.style.color = `rgb(${currentColors.one.r},${currentColors.one.g},${currentColors.one.b})`
+    }
+    for (let color of colorTwo) {
+        color.style.color = `rgb(${currentColors.two.r},${currentColors.two.g},${currentColors.two.b})`
+    }
+    for (let color of colorThree) {
+        color.style.color = `rgb(${currentColors.three.r},${currentColors.three.g},${currentColors.three.b})`
+    }
 }
 
 function getRandomRgb() {
-  return {
-    r: Math.round(Math.random()*205 + 50), // number between 50 and 255
-    g: Math.round(Math.random()*205 + 50),
-    b: Math.round(Math.random()*205 + 50),
-  }
+    return {
+        r: Math.round(Math.random()*256),
+        g: Math.round(Math.random()*256),
+        b: Math.round(Math.random()*256),
+    }
 }
 
-function getRandomBackgroundRgb() {
-  return {
-    r: Math.round(Math.random()*50), // number between 0 and 50
-    g: Math.round(Math.random()*50),
-    b: Math.round(Math.random()*50),
+function getRandomTextRgb(darkOrLight) {
+    return darkOrLight ? {
+        r: Math.round(Math.random()*31 + 225),
+        g: Math.round(Math.random()*31 + 225),
+        b: Math.round(Math.random()*31 + 225)
+    } : {
+        r: Math.round(Math.random()*30),
+        g: Math.round(Math.random()*30),
+        b: Math.round(Math.random()*30)
+    }
+}
+
+function getRandomBackgroundRgb(darkOrLight) {
+  return darkOrLight ? {
+    r: Math.round(Math.random()*30),
+    g: Math.round(Math.random()*30),
+    b: Math.round(Math.random()*30)
+  } : {
+    r: Math.round(Math.random()*31 + 225),
+    g: Math.round(Math.random()*31 + 225),
+    b: Math.round(Math.random()*31 + 225)
   }
 }
 
